@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>樂手排程系統</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .musician-name {
+            text-align: left;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 60px;
+            text-align: center;
+        }
+        input[type="checkbox"] {
+            width: 70%;
+            height: 70%;
+            margin: 0;
+            padding: 0;
+            cursor: pointer;
+        }
+        td {
+            position: relative;
+            width: 40px;
+            height: 40px;
+        }
+        td label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        button {
+            display: inline-block;
+            margin: 10px 5px;
+            padding: 5px 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        #dayCount {
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        #controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>樂手排程系統</h1>
+    <div id="controls">
+        <button onclick="changeDayCount(-1)">減少天數</button>
+        <span id="dayCount"></span>
+        <button onclick="changeDayCount(1)">增加天數</button>
+    </div>
+    <table id="availability-table"></table>
+    <button onclick="generateSchedule()">生成排程</button>
+    <div id="result"></div>
+
+    <script>
+    const skillSet = ['帶領', '和唱1', '和唱2', '結他', '低音結他', '司琴', '司鼓'];
+    let totalDays;
+
+    const musiciansData = {
+      "⿆梓榮": {"skills": "0001000"},
+      "陳⽂雄": {"skills": "0110011"},
+      "陳慶龍": {"skills": "1001100"},
+      "陳慧雅": {"skills": "0000001"},
+      "陳慧詩": {"skills": "0110000"},
+      "陳慧清": {"skills": "1110000"},
+      "蔡頌⽂": {"skills": "1111001"},
+      "葉美華": {"skills": "0000010"},
+      "范志雄": {"skills": "1001100"},
+      "胡建國": {"skills": "1000000"},
+      "符珮珮": {"skills": "1000010"},
+      "汪達願": {"skills": "0001000"},
+      "梁嘉麗": {"skills": "0110000"},
+      "林兆霆": {"skills": "1111100"},
+      "李旻浩": {"skills": "0000001"},
+      "李慧玲": {"skills": "1110000"},
+      "曾憲璋": {"skills": "1111000"},
+      "張靜萍": {"skills": "0000001"},
+      "龐芷麗": {"skills": "0110001"},
+      "呂碧華": {"skills": "1110000"},
+      "伍淑儀": {"skills": "0110000"},
+      "劉莉": {"skills": "1000000"},
+      "劉穎": {"skills": "1000010"},
+      "林麗": {"skills": "1000010"},
+      "林玲": {"skills": "0110001"},
+    };
+
+    function getNextMonthWeekends() {
+        const today = new Date();
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const lastDayOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+        const weekends = [];
+
+        for (let d = nextMonth; d <= lastDayOfNextMonth; d.setDate(d.getDate() + 1)) {
+            if (d.getDay() === 0 || d.getDay() === 6) { // 0 is Sunday, 6 is Saturday
+                weekends.push(new Date(d));
+            }
+        }
+
+        return weekends.map(date => {
+            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+        });
+    }
+
+    function initializeTotalDays() {
+        const weekends = getNextMonthWeekends();
+        totalDays = weekends.length;
+        updateDayCountDisplay();
+        createAvailabilityTable();
+    }
+
+    function updateDayCountDisplay() {
+        document.getElementById('dayCount').textContent = `總天數：${totalDays}`;
+    }
+
+    function changeDayCount(change) {
+        totalDays += change;
+        if (totalDays < 1) totalDays = 1;
+        updateDayCountDisplay();
+        createAvailabilityTable();
+    }
+
+    function createAvailabilityTable() {
+      const table = document.getElementById('availability-table');
+      const weekends = getNextMonthWeekends();
+      let html = '<tr><th>樂手</th>';
+      for (let i = 0; i < totalDays; i++) {
+        html += `<th><input type="text" id="day${i}" value="${weekends[i] || ''}" style="width: 60px;"></th>`;
+      }
+      html += '</tr>';
+
+      for (const [name, data] of Object.entries(musiciansData)) {
+        html += `<tr><td class="musician-name">${name}</td>`;
+        for (let i = 0; i < totalDays; i++) {
+          html += `<td><label><input type="checkbox" id="${name}-day${i}" checked></label></td>`;
+        }
+        html += '</tr>';
+      }
+
+      table.innerHTML = html;
+    }
+
+    function updateAvailability() {
+      for (const name of Object.keys(musiciansData)) {
+        let availability = '';
+        for (let i = 0; i < totalDays; i++) {
+          const checkbox = document.getElementById(`${name}-day${i}`);
+          availability += checkbox.checked ? '1' : '0';
+        }
+        musiciansData[name].availability = availability;
+      }
+    }
+
+    function createSchedule() {
+      updateAvailability();
+      const schedule = Array(totalDays).fill().map(() => ({}));
+      const attendanceCount = Object.fromEntries(Object.keys(musiciansData).map(m => [m, 0]));
+
+      // 初始排程
+      for (let day = 0; day < totalDays; day++) {
+        for (let skillIndex = 0; skillIndex < skillSet.length; skillIndex++) {
+          const skill = skillSet[skillIndex];
+          const availableMusicians = Object.keys(musiciansData).filter(musician => 
+            musiciansData[musician].availability[day] === '1' && 
+            musiciansData[musician].skills[skillIndex] === '1' &&
+            !Object.values(schedule[day]).includes(musician)
+          );
+
+          if (availableMusicians.length > 0) {
+            const selectedMusician = availableMusicians.reduce((a, b) => 
+              attendanceCount[a] <= attendanceCount[b] ? a : b
+            );
+            schedule[day][skill] = selectedMusician;
+            attendanceCount[selectedMusician]++;
+          }
+        }
+      }
+
+      // 優化排程
+      const maxIterations = 1000;
+      for (let iteration = 0; iteration < maxIterations; iteration++) {
+        let changed = false;
+        for (let day = 0; day < totalDays; day++) {
+          for (let skillIndex = 0; skillIndex < skillSet.length; skillIndex++) {
+            const skill = skillSet[skillIndex];
+            const currentMusician = schedule[day][skill];
+            if (!currentMusician) continue;
+
+            const potentialReplacements = Object.keys(musiciansData).filter(musician => 
+              musician !== currentMusician &&
+              musiciansData[musician].availability[day] === '1' &&
+              musiciansData[musician].skills[skillIndex] === '1' &&
+              attendanceCount[musician] < attendanceCount[currentMusician] &&
+              !Object.values(schedule[day]).includes(musician)
+            );
+
+            if (potentialReplacements.length > 0) {
+              const replacement = potentialReplacements.reduce((a, b) => 
+                attendanceCount[a] <= attendanceCount[b] ? a : b
+              );
+              schedule[day][skill] = replacement;
+              attendanceCount[currentMusician]--;
+              attendanceCount[replacement]++;
+              changed = true;
+            }
+          }
+        }
+        if (!changed) break;
+      }
+
+      return schedule;
+    }
+
+    function generateSchedule() {
+      const schedule = createSchedule();
+      const resultDiv = document.getElementById('result');
+      let resultHtml = '<table><tr><th>日期</th>';
+      for (const skill of skillSet) {
+        resultHtml += `<th>${skill}</th>`;
+      }
+      resultHtml += '</tr>';
+
+      for (let day = 0; day < totalDays; day++) {
+        const dateInput = document.getElementById(`day${day}`);
+        resultHtml += `<tr><td>${dateInput.value}</td>`;
+        for (const skill of skillSet) {
+          resultHtml += `<td>${schedule[day][skill] || '-'}</td>`;
+        }
+        resultHtml += '</tr>';
+      }
+      resultHtml += '</table>';
+
+      resultDiv.innerHTML = resultHtml;
+    }
+
+    initializeTotalDays();
+    </script>
+</body>
+</html>
