@@ -264,16 +264,11 @@
             );
 
             if (potentialReplacements.length > 0) {
-              const replacement = potentialReplacements.reduce((a, b) => {
-                if (musiciansData[a].skillCount !== musiciansData[b].skillCount) {
-                  return musiciansData[a].skillCount < musiciansData[b].skillCount ? a : b;
-                }
-                return attendanceCount[a] <= attendanceCount[b] ? a : b;
-              });
+              const replacement = potentialReplacements.reduce((a, b) => 
+                attendanceCount[a] <= attendanceCount[b] ? a : b
+              );
 
-              if (musiciansData[replacement].skillCount < musiciansData[currentMusician].skillCount ||
-                  (musiciansData[replacement].skillCount === musiciansData[currentMusician].skillCount &&
-                   attendanceCount[replacement] < attendanceCount[currentMusician])) {
+              if (attendanceCount[replacement] < attendanceCount[currentMusician]) {
                 schedule[day][skill] = replacement;
                 attendanceCount[currentMusician]--;
                 attendanceCount[replacement]++;
