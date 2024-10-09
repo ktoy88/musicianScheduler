@@ -216,6 +216,11 @@
       // 按照可用人數從少到多排序技能
       skillAvailability.sort((a, b) => a.count - b.count);
 
+      // 計算每個樂手的技能數量
+      for (const [name, data] of Object.entries(musiciansData)) {
+        data.skillCount = data.skills.split('').filter(s => s === '1').length;
+      }
+
       // 初始排程
       for (let day = 0; day < totalDays; day++) {
         for (const { skill } of skillAvailability) {
@@ -227,9 +232,14 @@
           );
 
           if (availableMusicians.length > 0) {
-            const selectedMusician = availableMusicians.reduce((a, b) => 
-              attendanceCount[a] <= attendanceCount[b] ? a : b
-            );
+            // 優先選擇技能數量較少的樂手，如果技能數量相同，則選擇出席次數最少的樂手
+            const selectedMusician = availableMusicians.reduce((a, b) => {
+              if (musiciansData[a].skillCount !== musiciansData[b].skillCount) {
+                return musiciansData[a].skillCount < musiciansData[b].skillCount ? a : b;
+              }
+              return attendanceCount[a] <= attendanceCount[b] ? a : b;
+            });
+
             schedule[day][skill] = selectedMusician;
             attendanceCount[selectedMusician]++;
           }
@@ -250,18 +260,25 @@
               musician !== currentMusician &&
               musiciansData[musician].availability[day] === '1' &&
               musiciansData[musician].skills[skillIndex] === '1' &&
-              attendanceCount[musician] < attendanceCount[currentMusician] &&
               !Object.values(schedule[day]).includes(musician)
             );
 
             if (potentialReplacements.length > 0) {
-              const replacement = potentialReplacements.reduce((a, b) => 
-                attendanceCount[a] <= attendanceCount[b] ? a : b
-              );
-              schedule[day][skill] = replacement;
-              attendanceCount[currentMusician]--;
-              attendanceCount[replacement]++;
-              changed = true;
+              const replacement = potentialReplacements.reduce((a, b) => {
+                if (musiciansData[a].skillCount !== musiciansData[b].skillCount) {
+                  return musiciansData[a].skillCount < musiciansData[b].skillCount ? a : b;
+                }
+                return attendanceCount[a] <= attendanceCount[b] ? a : b;
+              });
+
+              if (musiciansData[replacement].skillCount < musiciansData[currentMusician].skillCount ||
+                  (musiciansData[replacement].skillCount === musiciansData[currentMusician].skillCount &&
+                   attendanceCount[replacement] < attendanceCount[currentMusician])) {
+                schedule[day][skill] = replacement;
+                attendanceCount[currentMusician]--;
+                attendanceCount[replacement]++;
+                changed = true;
+              }
             }
           }
         }
