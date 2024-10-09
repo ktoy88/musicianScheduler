@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>樂手排程系統</title>
+    <title>崇拜排程系統</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,7 +13,7 @@
             margin: 0 auto;
             padding: 20px;
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             color: #2c3e50;
         }
@@ -91,10 +91,18 @@
             text-align: center;
             margin-bottom: 20px;
         }
+        #skillList {
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
-    <h1>樂手排程系統</h1>
+    <h1>崇拜排程系統</h1>
+    <div id="skillList"></div>
     <div id="controls">
         <button onclick="changeDayCount(-1)">減少天數</button>
         <span id="dayCount"></span>
@@ -135,6 +143,19 @@
       "林麗": {"skills": "1000010"},
       "林玲": {"skills": "0110001"},
     };
+
+    function createSkillList() {
+        const skillListDiv = document.getElementById('skillList');
+        let html = '<h2>崇拜事奉人員</h2>';
+        
+        for (let i = 0; i < skillSet.length; i++) {
+            const skill = skillSet[i];
+            const musicians = Object.keys(musiciansData).filter(name => musiciansData[name].skills[i] === '1');
+            html += `<p><strong>${skill}：</strong>${musicians.join('、')}</p>`;
+        }
+
+        skillListDiv.innerHTML = html;
+    }
 
     function getNextMonthWeekends() {
         const today = new Date();
@@ -207,21 +228,17 @@
       const schedule = Array(totalDays).fill().map(() => ({}));
       const attendanceCount = Object.fromEntries(Object.keys(musiciansData).map(m => [m, 0]));
 
-      // 計算每個技能的可用人數
       const skillAvailability = skillSet.map((skill, index) => ({
         skill,
         count: Object.values(musiciansData).filter(m => m.skills[index] === '1').length
       }));
 
-      // 按照可用人數從少到多排序技能
       skillAvailability.sort((a, b) => a.count - b.count);
 
-      // 計算每個樂手的技能數量
       for (const [name, data] of Object.entries(musiciansData)) {
         data.skillCount = data.skills.split('').filter(s => s === '1').length;
       }
 
-      // 初始排程
       for (let day = 0; day < totalDays; day++) {
         for (const { skill } of skillAvailability) {
           const skillIndex = skillSet.indexOf(skill);
@@ -232,7 +249,6 @@
           );
 
           if (availableMusicians.length > 0) {
-            // 優先選擇技能數量較少的樂手，如果技能數量相同，則選擇出席次數最少的樂手
             const selectedMusician = availableMusicians.reduce((a, b) => {
               if (musiciansData[a].skillCount !== musiciansData[b].skillCount) {
                 return musiciansData[a].skillCount < musiciansData[b].skillCount ? a : b;
@@ -246,7 +262,6 @@
         }
       }
 
-      // 優化排程
       const maxIterations = 1000;
       for (let iteration = 0; iteration < maxIterations; iteration++) {
         let changed = false;
@@ -305,6 +320,7 @@
       resultDiv.innerHTML = resultHtml;
     }
 
+    createSkillList();
     initializeTotalDays();
     </script>
 </body>
