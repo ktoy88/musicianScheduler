@@ -207,10 +207,19 @@
       const schedule = Array(totalDays).fill().map(() => ({}));
       const attendanceCount = Object.fromEntries(Object.keys(musiciansData).map(m => [m, 0]));
 
+      // 計算每個技能的可用人數
+      const skillAvailability = skillSet.map((skill, index) => ({
+        skill,
+        count: Object.values(musiciansData).filter(m => m.skills[index] === '1').length
+      }));
+
+      // 按照可用人數從少到多排序技能
+      skillAvailability.sort((a, b) => a.count - b.count);
+
       // 初始排程
       for (let day = 0; day < totalDays; day++) {
-        for (let skillIndex = 0; skillIndex < skillSet.length; skillIndex++) {
-          const skill = skillSet[skillIndex];
+        for (const { skill } of skillAvailability) {
+          const skillIndex = skillSet.indexOf(skill);
           const availableMusicians = Object.keys(musiciansData).filter(musician => 
             musiciansData[musician].availability[day] === '1' && 
             musiciansData[musician].skills[skillIndex] === '1' &&
@@ -232,8 +241,8 @@
       for (let iteration = 0; iteration < maxIterations; iteration++) {
         let changed = false;
         for (let day = 0; day < totalDays; day++) {
-          for (let skillIndex = 0; skillIndex < skillSet.length; skillIndex++) {
-            const skill = skillSet[skillIndex];
+          for (const { skill } of skillAvailability) {
+            const skillIndex = skillSet.indexOf(skill);
             const currentMusician = schedule[day][skill];
             if (!currentMusician) continue;
 
